@@ -56,6 +56,7 @@ const HealthInputsPage = () => {
     email: string;
   } | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [isResubmitting, setIsResubmitting] = useState(false);
 
   const [formData, setFormData] = useState<HealthData>({
     heartRate: "",
@@ -91,15 +92,26 @@ const HealthInputsPage = () => {
         return;
       }
 
+      // Check URL parameters to see if this is a resubmission
+      const urlParams = new URLSearchParams(window.location.search);
+      const resubmit = urlParams.get("resubmit") === "true";
+
       // Check if already submitted today
       const hasSubmitted = hasSubmittedToday(currentUser.id);
 
-      // Batch all state updates together
-      if (hasSubmitted) {
-        // Load today's data to show
+      // If resubmitting, allow form editing even if already submitted
+      if (resubmit) {
+        setIsResubmitting(true);
+        // Load existing data for editing
         const todayRecord = getTodayHealthRecord(currentUser.id);
         if (todayRecord) {
-          // Use functional update to batch state changes
+          setFormData(todayRecord);
+        }
+        setAlreadySubmitted(false); // Allow form to be shown
+      } else if (hasSubmitted) {
+        // Normal flow - show read-only view if already submitted
+        const todayRecord = getTodayHealthRecord(currentUser.id);
+        if (todayRecord) {
           setFormData(todayRecord);
           setAlreadySubmitted(true);
         }
@@ -143,14 +155,36 @@ const HealthInputsPage = () => {
 
     try {
       // Save health record with user ID
-      saveHealthRecord({
-        ...formData,
+      // Create data object without timestamp (saveHealthRecord generates it automatically)
+      const dataToSave = {
+        heartRate: formData.heartRate,
+        systolicBP: formData.systolicBP,
+        diastolicBP: formData.diastolicBP,
+        steps: formData.steps,
+        activeMinutes: formData.activeMinutes,
+        sleepDuration: formData.sleepDuration,
+        sleepQuality: formData.sleepQuality,
+        caloriesBurned: formData.caloriesBurned,
+        caloriesConsumed: formData.caloriesConsumed,
+        waterIntake: formData.waterIntake,
+        weight: formData.weight,
+        moodLevel: formData.moodLevel,
+        stressLevel: formData.stressLevel,
+        headache: formData.headache,
+        fatigue: formData.fatigue,
+        lossOfAppetite: formData.lossOfAppetite,
+        bodyPain: formData.bodyPain,
+        dizziness: formData.dizziness,
         userId: user.id,
-      });
+      };
 
-      setSaveMessage(
-        "Health data saved successfully! ✓ Redirecting to dashboard..."
-      );
+      saveHealthRecord(dataToSave);
+
+      const successMessage = isResubmitting
+        ? "Health data updated successfully! ✓ Redirecting to dashboard..."
+        : "Health data saved successfully! ✓ Redirecting to dashboard...";
+
+      setSaveMessage(successMessage);
 
       // Redirect to dashboard after 1.5 seconds
       setTimeout(() => {
@@ -171,7 +205,7 @@ const HealthInputsPage = () => {
     );
   }
 
-  if (alreadySubmitted) {
+  if (alreadySubmitted && !isResubmitting) {
     return (
       <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 py-8 px-4">
         <div className="max-w-4xl mx-auto">
@@ -187,13 +221,26 @@ const HealthInputsPage = () => {
                 You&apos;ve already submitted your health data for today. You
                 can submit again tomorrow at 6:00 AM.
               </p>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => router.push("/dashboard")}
-              >
-                Go to Dashboard
-              </Button>
+              <div className="flex gap-3 justify-center">
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("resubmit", "true");
+                    window.location.href = url.toString();
+                  }}
+                >
+                  Update Today&apos;s Data
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => router.push("/dashboard")}
+                >
+                  Go to Dashboard
+                </Button>
+              </div>
             </div>
 
             <div className="border-t pt-6 mt-6">
@@ -246,11 +293,27 @@ const HealthInputsPage = () => {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-xl p-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Health Inputs
+            {isResubmitting ? "Update Health Data" : "Health Inputs"}
           </h1>
-          <p className="text-gray-600 mb-6">
-            Track your daily health metrics and vitals
+          <p className="text-gray-600 mb-4">
+            {isResubmitting
+              ? "Update your health metrics and vitals for today"
+              : "Track your daily health metrics and vitals"}
           </p>
+
+          {isResubmitting && (
+            <div className="bg-blue-100 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-600 font-medium">
+                  📝 Update Mode:
+                </span>
+                <span className="text-blue-800">
+                  You&apos;re updating your existing health data for today.
+                  Changes will overwrite previous values.
+                </span>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Vitals Section */}
@@ -542,6 +605,17 @@ const HealthInputsPage = () => {
 
             {/* Submit Button */}
             <div className="flex gap-4">
+              {isResubmitting && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => router.push("/dashboard")}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              )}
               <Button
                 type="submit"
                 variant="primary"
@@ -549,7 +623,7 @@ const HealthInputsPage = () => {
                 isLoading={isLoading}
                 className="w-full"
               >
-                Save Health Data
+                {isResubmitting ? "Update Health Data" : "Save Health Data"}
               </Button>
             </div>
           </form>

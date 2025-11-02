@@ -56,7 +56,19 @@ export const saveHealthRecord = (
   const records: HealthRecord[] = existingRecords
     ? JSON.parse(existingRecords)
     : [];
-  records.push(newRecord);
+
+  // Check if there's already a record for today for this user
+  const todayRecordIndex = records.findIndex(
+    (r) => r.userId === record.userId && r.date === date
+  );
+
+  if (todayRecordIndex >= 0) {
+    // Update existing record for today
+    records[todayRecordIndex] = newRecord;
+  } else {
+    // Add new record
+    records.push(newRecord);
+  }
 
   localStorage.setItem(HEALTH_RECORDS_KEY, JSON.stringify(records));
   localStorage.setItem(`${LAST_SUBMISSION_KEY}_${record.userId}`, timestamp);

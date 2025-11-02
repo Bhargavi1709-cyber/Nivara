@@ -8,6 +8,7 @@ import {
   Trash2,
   Download,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -25,7 +26,13 @@ interface HistoryItem {
   type: "chat" | "analysis" | "report";
 }
 
-const LeftBar = () => {
+interface User {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+const LeftBar = ({ user }: { user: User | null }) => {
   const [name, setName] = useState("User");
   const [activeItem, setActiveItem] = useState("home");
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
@@ -188,6 +195,17 @@ const LeftBar = () => {
     }
   };
 
+  const handleResubmitHealthData = () => {
+    if (
+      confirm(
+        "Are you sure you want to resubmit your health input data? This will redirect you to the health inputs page."
+      )
+    ) {
+      // Redirect to health inputs page with resubmit parameter
+      window.location.href = "/healthinputs?resubmit=true";
+    }
+  };
+
   return (
     <aside className="h-full w-full py-3 pl-3 pr-1">
       <div className="h-full w-full flex flex-col bg-white  border border-gray-100 rounded-xl">
@@ -205,8 +223,7 @@ const LeftBar = () => {
             </div>
             <div className="pl-0.5">
               <span className="text-sm font-medium text-slate-500">
-                Welcome back,{" "}
-                <span className="text-slate-700 font-semibold">{name}</span>!
+                {user?.email || "user@eg.com"}
               </span>
             </div>
           </header>
@@ -310,8 +327,8 @@ const LeftBar = () => {
                     </label>
                     <input
                       type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      value={user?.fullName || ""}
+                      readOnly
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                     />
                   </div>
@@ -321,7 +338,8 @@ const LeftBar = () => {
                     </label>
                     <input
                       type="email"
-                      placeholder="user@example.com"
+                      value={user?.email || ""}
+                      readOnly
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                     />
                   </div>
@@ -361,6 +379,15 @@ const LeftBar = () => {
               <div className="space-y-4">
                 <h3 className="font-semibold text-slate-800">Account</h3>
                 <div className="space-y-3">
+                  <button
+                    onClick={handleResubmitHealthData}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sky-600 hover:bg-sky-50 rounded-lg transition-colors group"
+                  >
+                    <RefreshCw className="w-5 h-5 text-sky-500 group-hover:text-sky-600" />
+                    <span className="font-medium">
+                      Resubmit Health Input Data
+                    </span>
+                  </button>
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
