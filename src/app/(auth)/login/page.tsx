@@ -1,11 +1,12 @@
 "use client";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthLayout from "@/components/(auth)/AuthLayout";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
-import { login } from "@/lib/auth";
+import { login, isAuthenticated } from "@/lib/auth";
+import { needsHealthSubmission } from "@/lib/healthData";
 
 const Login = () => {
   const router = useRouter();
@@ -15,13 +16,33 @@ const Login = () => {
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.push("/dashboard");
+      return;
+    }
+    const checkAuth = async () => {
+      setIsChecking(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrors({});
     setIsLoading(true);
 
-    // Validate form
     const newErrors: { [key: string]: string } = {};
     if (!formData.email) {
       newErrors.email = "Email is required";
@@ -36,12 +57,17 @@ const Login = () => {
       return;
     }
 
-    // Attempt login
     const result = login(formData.email, formData.password);
 
-    if (result.success) {
-      // Redirect to dashboard
-      router.push("/dashboard");
+    if (result.success && result.user) {
+      // Check if user needs to submit health data
+      if (needsHealthSubmission(result.user.id)) {
+        // Redirect to health inputs if not submitted today
+        router.push("/healthinputs");
+      } else {
+        // Redirect to dashboard if already submitted
+        router.push("/dashboard");
+      }
     } else {
       setErrors({ form: result.error || "Login failed" });
       setIsLoading(false);

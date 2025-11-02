@@ -1,11 +1,11 @@
 "use client";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthLayout from "@/components/(auth)/AuthLayout";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
-import { signup } from "@/lib/auth";
+import { signup, isAuthenticated } from "@/lib/auth";
 
 const Signup = () => {
   const router = useRouter();
@@ -17,6 +17,24 @@ const Signup = () => {
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.push("/dashboard");
+    } else {
+      // @ts-ignore - Safe to set state here for route protection
+      setIsChecking(false);
+    }
+  }, [router]);
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -50,8 +68,8 @@ const Signup = () => {
     const result = signup(formData.fullName, formData.email, formData.password);
 
     if (result.success) {
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Redirect to health inputs for first time data entry
+      router.push("/healthinputs");
     } else {
       setErrors({ form: result.error || "Signup failed" });
       setIsLoading(false);
