@@ -24,36 +24,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import HealthChart from "@/components/(dashboard)/HealthChart";
-
-interface HealthRecord {
-  heartRate: string;
-  systolicBP: string;
-  diastolicBP: string;
-  steps: string;
-  activeMinutes: string;
-  sleepDuration: string;
-  sleepQuality: string;
-  caloriesBurned: string;
-  caloriesConsumed: string;
-  waterIntake: string;
-  weight: string;
-  moodLevel: string;
-  stressLevel: string;
-  headache: boolean;
-  fatigue: boolean;
-  lossOfAppetite: boolean;
-  bodyPain: boolean;
-  dizziness: boolean;
-  timestamp: string;
-  date: string;
-  userId: string;
-}
-
-interface User {
-  id: string;
-  fullName: string;
-  email: string;
-}
+import { HealthRecord } from "@/lib/healthData";
+import { User } from "@/lib/auth";
 
 const Dashboard = () => {
   const router = useRouter();
@@ -116,7 +88,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="grid grid-cols-[280px_auto] h-screen w-full bg-gray-100">
+    <div className="grid md:grid-cols-[280px_auto] h-screen w-full bg-gray-100">
       <LeftBar user={user} />
       <section className="h-full w-full md:py-3 md:px-1 md:pr-3 overflow-hidden">
         <main className="h-full w-full rounded-lg bg-white overflow-y-auto pb-1">
@@ -683,7 +655,7 @@ const Dashboard = () => {
                   </button>
 
                   <button
-                    onClick={() => router.push("/chatbot")}
+                    onClick={() => router.push("/dashboard/chatbot")}
                     className="bg-linear-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 text-left hover:shadow-md transition-all group"
                   >
                     <div className="flex items-center gap-3 mb-3">

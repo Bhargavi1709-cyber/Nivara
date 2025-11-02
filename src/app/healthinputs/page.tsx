@@ -4,57 +4,21 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import FormField from "@/components/ui/FormField";
 import Button from "@/components/ui/Button";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, User } from "@/lib/auth";
 import {
   saveHealthRecord,
   hasSubmittedToday,
   getTodayHealthRecord,
+  HealthRecord,
 } from "@/lib/healthData";
 
-interface HealthData {
-  // Vitals
-  heartRate: string;
-  systolicBP: string;
-  diastolicBP: string;
-
-  // Activity
-  steps: string;
-  activeMinutes: string;
-
-  // Sleep
-  sleepDuration: string;
-  sleepQuality: string;
-
-  // Calories & Nutrition
-  caloriesBurned: string;
-  caloriesConsumed: string;
-  waterIntake: string;
-
-  // Weight & Body
-  weight: string;
-
-  // Mood
-  moodLevel: string;
-  stressLevel: string;
-
-  // Symptoms (Yes/No checkboxes)
-  headache: boolean;
-  fatigue: boolean;
-  lossOfAppetite: boolean;
-  bodyPain: boolean;
-  dizziness: boolean;
-
-  timestamp: string;
-}
+// Using HealthRecord type from lib for consistency
+type HealthData = Omit<HealthRecord, "date" | "timestamp" | "userId">;
 
 const HealthInputsPage = () => {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
-  const [user, setUser] = useState<{
-    id: string;
-    fullName: string;
-    email: string;
-  } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [isResubmitting, setIsResubmitting] = useState(false);
 
@@ -77,11 +41,11 @@ const HealthInputsPage = () => {
     lossOfAppetite: false,
     bodyPain: false,
     dizziness: false,
-    timestamp: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     // Check if user is authenticated and load data
@@ -143,11 +107,93 @@ const HealthInputsPage = () => {
     }
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    // Validate required fields
+    if (!formData.heartRate) newErrors.heartRate = "Heart rate is required";
+    if (!formData.systolicBP) newErrors.systolicBP = "Systolic BP is required";
+    if (!formData.diastolicBP)
+      newErrors.diastolicBP = "Diastolic BP is required";
+    if (!formData.steps) newErrors.steps = "Steps count is required";
+    if (!formData.activeMinutes)
+      newErrors.activeMinutes = "Active minutes is required";
+    if (!formData.sleepDuration)
+      newErrors.sleepDuration = "Sleep duration is required";
+    if (!formData.sleepQuality)
+      newErrors.sleepQuality = "Sleep quality is required";
+    if (!formData.caloriesBurned)
+      newErrors.caloriesBurned = "Calories burned is required";
+    if (!formData.caloriesConsumed)
+      newErrors.caloriesConsumed = "Calories consumed is required";
+    if (!formData.waterIntake)
+      newErrors.waterIntake = "Water intake is required";
+    if (!formData.weight) newErrors.weight = "Weight is required";
+    if (!formData.moodLevel) newErrors.moodLevel = "Mood level is required";
+    if (!formData.stressLevel)
+      newErrors.stressLevel = "Stress level is required";
+
+    // Validate ranges
+    if (
+      formData.heartRate &&
+      (parseInt(formData.heartRate) < 30 || parseInt(formData.heartRate) > 250)
+    ) {
+      newErrors.heartRate = "Heart rate must be between 30-250 bpm";
+    }
+    if (
+      formData.systolicBP &&
+      (parseInt(formData.systolicBP) < 70 ||
+        parseInt(formData.systolicBP) > 250)
+    ) {
+      newErrors.systolicBP = "Systolic BP must be between 70-250 mmHg";
+    }
+    if (
+      formData.diastolicBP &&
+      (parseInt(formData.diastolicBP) < 40 ||
+        parseInt(formData.diastolicBP) > 150)
+    ) {
+      newErrors.diastolicBP = "Diastolic BP must be between 40-150 mmHg";
+    }
+    if (
+      formData.sleepQuality &&
+      (parseInt(formData.sleepQuality) < 0 ||
+        parseInt(formData.sleepQuality) > 100)
+    ) {
+      newErrors.sleepQuality = "Sleep quality must be between 0-100%";
+    }
+    if (
+      formData.moodLevel &&
+      (parseInt(formData.moodLevel) < 1 || parseInt(formData.moodLevel) > 10)
+    ) {
+      newErrors.moodLevel = "Mood level must be between 1-10";
+    }
+    if (
+      formData.stressLevel &&
+      (parseInt(formData.stressLevel) < 1 ||
+        parseInt(formData.stressLevel) > 10)
+    ) {
+      newErrors.stressLevel = "Stress level must be between 1-10";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user) {
       router.push("/login");
+      return;
+    }
+
+    // Clear previous errors and messages
+    setErrors({});
+    setSaveMessage("");
+
+    // Validate form
+    if (!validateForm()) {
+      setSaveMessage("Please correct the errors below and try again.");
       return;
     }
 
@@ -178,18 +224,22 @@ const HealthInputsPage = () => {
         userId: user.id,
       };
 
-      saveHealthRecord(dataToSave);
+      const saveResult = saveHealthRecord(dataToSave);
 
-      const successMessage = isResubmitting
-        ? "Health data updated successfully! ✓ Redirecting to dashboard..."
-        : "Health data saved successfully! ✓ Redirecting to dashboard...";
+      if (saveResult) {
+        const successMessage = isResubmitting
+          ? "Health data updated successfully! ✓ Redirecting to dashboard..."
+          : "Health data saved successfully! ✓ Redirecting to dashboard...";
 
-      setSaveMessage(successMessage);
+        setSaveMessage(successMessage);
 
-      // Redirect to dashboard after 1.5 seconds
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 1500);
+        // Redirect to dashboard after 1.5 seconds
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1500);
+      } else {
+        throw new Error("Failed to save health data");
+      }
     } catch (error) {
       setSaveMessage("Error saving data. Please try again.");
       console.error("Error saving health data:", error);
@@ -226,9 +276,11 @@ const HealthInputsPage = () => {
                   variant="secondary"
                   size="lg"
                   onClick={() => {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set("resubmit", "true");
-                    window.location.href = url.toString();
+                    if (typeof window !== "undefined") {
+                      const url = new URL(window.location.href);
+                      url.searchParams.set("resubmit", "true");
+                      window.location.href = url.toString();
+                    }
                   }}
                 >
                   Update Today&apos;s Data
@@ -330,6 +382,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 72"
                   helperText="Normal: 60-100 bpm"
+                  error={errors.heartRate}
                   required
                 />
                 <FormField
@@ -340,6 +393,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 120"
                   helperText="Top number"
+                  error={errors.systolicBP}
                   required
                 />
                 <FormField
@@ -350,6 +404,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 80"
                   helperText="Bottom number"
+                  error={errors.diastolicBP}
                   required
                 />
               </div>
@@ -369,6 +424,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 7500"
                   helperText="Steps per day"
+                  error={errors.steps}
                   required
                 />
                 <FormField
@@ -379,6 +435,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 45"
                   helperText="Active time today"
+                  error={errors.activeMinutes}
                   required
                 />
               </div>
@@ -399,6 +456,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 6.5"
                   helperText="Hours of sleep"
+                  error={errors.sleepDuration}
                   required
                 />
                 <FormField
@@ -411,6 +469,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 80"
                   helperText="Sleep score (0-100)"
+                  error={errors.sleepQuality}
                   required
                 />
               </div>
@@ -430,6 +489,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 2200"
                   helperText="Total calories burned"
+                  error={errors.caloriesBurned}
                   required
                 />
                 <FormField
@@ -440,6 +500,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 1800"
                   helperText="Total calories eaten"
+                  error={errors.caloriesConsumed}
                   required
                 />
                 <FormField
@@ -451,6 +512,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 2.0"
                   helperText="Liters per day"
+                  error={errors.waterIntake}
                   required
                 />
               </div>
@@ -471,6 +533,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="e.g., 65"
                   helperText="Daily weight measurement"
+                  error={errors.weight}
                   required
                 />
               </div>
@@ -492,6 +555,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="1-10"
                   helperText="1 = Very low, 10 = Very high"
+                  error={errors.moodLevel}
                   required
                 />
                 <FormField
@@ -504,6 +568,7 @@ const HealthInputsPage = () => {
                   onChange={handleInputChange}
                   placeholder="1-10"
                   helperText="1 = No stress, 10 = Very stressed"
+                  error={errors.stressLevel}
                   required
                 />
               </div>
@@ -512,7 +577,7 @@ const HealthInputsPage = () => {
             {/* Symptoms Section */}
             <section className="pb-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="text-2xl">�</span> Symptoms
+                <span className="text-2xl">⚕️</span> Symptoms
               </h2>
               <p className="text-sm text-gray-600 mb-4">
                 Check any symptoms you are experiencing today
@@ -589,6 +654,20 @@ const HealthInputsPage = () => {
                 </label>
               </div>
             </section>
+
+            {/* Error Summary */}
+            {Object.keys(errors).length > 0 && (
+              <div className="p-4 rounded-md bg-red-100 text-red-800">
+                <h3 className="font-medium mb-2">
+                  Please fix the following errors:
+                </h3>
+                <ul className="text-sm space-y-1">
+                  {Object.entries(errors).map(([field, error]) => (
+                    <li key={field}>• {error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Success Message */}
             {saveMessage && (

@@ -10,7 +10,9 @@ import {
   LogOut,
   RefreshCw,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { User } from "@/lib/auth";
 
 interface NavItem {
   id: string;
@@ -26,14 +28,7 @@ interface HistoryItem {
   type: "chat" | "analysis" | "report";
 }
 
-interface User {
-  id: string;
-  fullName: string;
-  email: string;
-}
-
 const LeftBar = ({ user }: { user: User | null }) => {
-  const [name, setName] = useState("User");
   const [activeItem, setActiveItem] = useState("home");
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [showHistoryPopup, setShowHistoryPopup] = useState(false);
@@ -191,7 +186,9 @@ const LeftBar = ({ user }: { user: User | null }) => {
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
       logout();
-      window.location.href = "/login";
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
     }
   };
 
@@ -202,12 +199,14 @@ const LeftBar = ({ user }: { user: User | null }) => {
       )
     ) {
       // Redirect to health inputs page with resubmit parameter
-      window.location.href = "/healthinputs?resubmit=true";
+      if (typeof window !== "undefined") {
+        window.location.href = "/healthinputs?resubmit=true";
+      }
     }
   };
-
+  const router = useRouter();
   return (
-    <aside className="h-full w-full py-3 pl-3 pr-1">
+    <aside className="h-full w-full py-3 pl-3 pr-1 max-md:hidden">
       <div className="h-full w-full flex flex-col bg-white  border border-gray-100 rounded-xl">
         {/* Header Section */}
         <div className="flex flex-col gap-6 p-6 border-b border-gray-50">
@@ -232,12 +231,17 @@ const LeftBar = ({ user }: { user: User | null }) => {
         {/* Navigation Section */}
         <nav className="flex-1 px-4 py-6">
           <div className="space-y-1">
-            {navItems.map((item) => {
+            {navItems.map((item, i) => {
               const isActive = activeItem === item.id;
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavItemClick(item.id)}
+                  onClick={() => {
+                    handleNavItemClick(item.id);
+                    if (i === 1) {
+                      router.push("/dashboard/chatbot");
+                    }
+                  }}
                   className={`
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
                     text-sm font-medium transition-all duration-200 ease-out

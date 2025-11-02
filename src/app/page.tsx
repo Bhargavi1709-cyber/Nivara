@@ -1,7 +1,18 @@
-﻿import Link from "next/link";
+﻿"use client";
+import Link from "next/link";
 import { Leaf, Brain, Sparkles, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { isAuthenticated } from "@/lib/auth";
+import { useEffect } from "react";
 
 export default function Home() {
+  const router = useRouter();
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.push("/dashboard");
+      return;
+    }
+  }, [router]);
   return (
     <>
       <div className="min-h-screen flex flex-col">

@@ -1,14 +1,6 @@
 "use client";
 import { useState } from "react";
-
-interface HealthRecord {
-  heartRate: string;
-  steps: string;
-  weight: string;
-  sleepDuration: string;
-  moodLevel: string;
-  date: string;
-}
+import { HealthRecord } from "@/lib/healthData";
 
 interface HealthChartProps {
   records: HealthRecord[];

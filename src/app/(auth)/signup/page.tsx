@@ -20,12 +20,15 @@ const Signup = () => {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated()) {
-      router.push("/dashboard");
-    } else {
-      // @ts-ignore - Safe to set state here for route protection
-      setIsChecking(false);
-    }
+    const checkAuth = () => {
+      if (isAuthenticated()) {
+        router.push("/dashboard");
+      } else {
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
   }, [router]);
 
   if (isChecking) {

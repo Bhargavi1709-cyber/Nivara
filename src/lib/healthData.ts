@@ -30,66 +30,82 @@ const LAST_SUBMISSION_KEY = "lastHealthSubmission";
 // Get user's health records
 export const getHealthRecords = (userId: string): HealthRecord[] => {
   if (typeof window === "undefined") return [];
-  const records = localStorage.getItem(HEALTH_RECORDS_KEY);
-  if (!records) return [];
 
-  const allRecords: HealthRecord[] = JSON.parse(records);
-  return allRecords.filter((record) => record.userId === userId);
+  try {
+    const records = localStorage.getItem(HEALTH_RECORDS_KEY);
+    if (!records) return [];
+
+    const allRecords: HealthRecord[] = JSON.parse(records);
+    return allRecords.filter((record) => record.userId === userId);
+  } catch (error) {
+    console.error("Error reading health records:", error);
+    return [];
+  }
 };
 
 // Save health record
 export const saveHealthRecord = (
   record: Omit<HealthRecord, "date" | "timestamp"> & { userId: string }
-): void => {
-  if (typeof window === "undefined") return;
+): boolean => {
+  if (typeof window === "undefined") return false;
 
-  const timestamp = new Date().toISOString();
-  const date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  try {
+    const timestamp = new Date().toISOString();
+    const date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
-  const newRecord: HealthRecord = {
-    ...record,
-    timestamp,
-    date,
-  };
+    const newRecord: HealthRecord = {
+      ...record,
+      timestamp,
+      date,
+    };
 
-  const existingRecords = localStorage.getItem(HEALTH_RECORDS_KEY);
-  const records: HealthRecord[] = existingRecords
-    ? JSON.parse(existingRecords)
-    : [];
+    const existingRecords = localStorage.getItem(HEALTH_RECORDS_KEY);
+    const records: HealthRecord[] = existingRecords
+      ? JSON.parse(existingRecords)
+      : [];
 
-  // Check if there's already a record for today for this user
-  const todayRecordIndex = records.findIndex(
-    (r) => r.userId === record.userId && r.date === date
-  );
+    // Check if there's already a record for today for this user
+    const todayRecordIndex = records.findIndex(
+      (r) => r.userId === record.userId && r.date === date
+    );
 
-  if (todayRecordIndex >= 0) {
-    // Update existing record for today
-    records[todayRecordIndex] = newRecord;
-  } else {
-    // Add new record
-    records.push(newRecord);
+    if (todayRecordIndex >= 0) {
+      // Update existing record for today
+      records[todayRecordIndex] = newRecord;
+    } else {
+      // Add new record
+      records.push(newRecord);
+    }
+
+    localStorage.setItem(HEALTH_RECORDS_KEY, JSON.stringify(records));
+    localStorage.setItem(`${LAST_SUBMISSION_KEY}_${record.userId}`, timestamp);
+    return true;
+  } catch (error) {
+    console.error("Error saving health record:", error);
+    return false;
   }
-
-  localStorage.setItem(HEALTH_RECORDS_KEY, JSON.stringify(records));
-  localStorage.setItem(`${LAST_SUBMISSION_KEY}_${record.userId}`, timestamp);
 };
 
 // Check if user has submitted health data today
 export const hasSubmittedToday = (userId: string): boolean => {
   if (typeof window === "undefined") return false;
 
-  const lastSubmission = localStorage.getItem(
-    `${LAST_SUBMISSION_KEY}_${userId}`
-  );
-  if (!lastSubmission) return false;
+  try {
+    const lastSubmission = localStorage.getItem(
+      `${LAST_SUBMISSION_KEY}_${userId}`
+    );
+    if (!lastSubmission) return false;
 
-  const lastDate = new Date(lastSubmission).toISOString().split("T")[0];
-  const today = new Date().toISOString().split("T")[0];
+    const lastDate = new Date(lastSubmission).toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0];
 
-  return lastDate === today;
+    return lastDate === today;
+  } catch (error) {
+    console.error("Error checking submission status:", error);
+    return false;
+  }
 };
 
-// Check if user needs to submit data (based on 6 AM daily)
 export const needsHealthSubmission = (userId: string): boolean => {
   if (typeof window === "undefined") return false;
 
@@ -97,7 +113,7 @@ export const needsHealthSubmission = (userId: string): boolean => {
     `${LAST_SUBMISSION_KEY}_${userId}`
   );
 
-  if (!lastSubmission) return true; // Never submitted
+  if (!lastSubmission) return true;
 
   const lastSubmissionDate = new Date(lastSubmission);
   const now = new Date();
@@ -110,10 +126,8 @@ export const needsHealthSubmission = (userId: string): boolean => {
   const yesterday6AM = new Date(today6AM);
   yesterday6AM.setDate(yesterday6AM.getDate() - 1);
 
-  // If current time is before today's 6 AM, check against yesterday's 6 AM
   const cutoffTime = now < today6AM ? yesterday6AM : today6AM;
 
-  // Need submission if last submission was before the cutoff time
   return lastSubmissionDate < cutoffTime;
 };
 
